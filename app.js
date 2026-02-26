@@ -1,5 +1,4 @@
-// app.js
-// Anti-Doomscroll Timer + Tasks + Gemini witty nudge (optional)
+// app.js — Critter Focus Timer (Cute + Bright) + Tasks + ALWAYS shows hint on distraction
 
 const appEl = document.getElementById("app");
 const todayEl = document.getElementById("today");
@@ -8,6 +7,7 @@ const soundBtn = document.getElementById("soundBtn");
 const modeEl = document.getElementById("mode");
 const timeEl = document.getElementById("time");
 const hintEl = document.getElementById("hint");
+const stickerEl = document.getElementById("sticker");
 
 const startBtn = document.getElementById("startBtn");
 const pauseBtn = document.getElementById("pauseBtn");
@@ -18,11 +18,9 @@ const focusMinInput = document.getElementById("focusMin");
 const breakMinInput = document.getElementById("breakMin");
 const applyBtn = document.getElementById("applyBtn");
 
-// Stats
 const pomCountEl = document.getElementById("pomCount");
 const disCountEl = document.getElementById("disCount");
 
-// Tasks
 const taskNameInput = document.getElementById("taskName");
 const taskMinInput = document.getElementById("taskMin");
 const addTaskBtn = document.getElementById("addTaskBtn");
@@ -30,11 +28,7 @@ const taskListEl = document.getElementById("taskList");
 const plannedMinEl = document.getElementById("plannedMin");
 const doneMinEl = document.getElementById("doneMin");
 
-// Gemini key UI
-const geminiKeyInput = document.getElementById("geminiKey");
-const saveKeyBtn = document.getElementById("saveKeyBtn");
-
-// ---------- Date / storage ----------
+// ---------- date / storage ----------
 function todayKey() {
   const d = new Date();
   const y = d.getFullYear();
@@ -42,9 +36,7 @@ function todayKey() {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
-const STORAGE_PREFIX = "antiDoomscroll:";
-const KEY_STORAGE = "antiDoomscroll:geminiKey"; // key stored locally only
-
+const STORAGE_PREFIX = "critterFocus:";
 function loadState() {
   const key = STORAGE_PREFIX + todayKey();
   const raw = localStorage.getItem(key);
@@ -65,8 +57,9 @@ function saveState(s) {
 }
 
 let state = loadState();
+todayEl.textContent = `Today: ${todayKey()}`;
 
-// ---------- Timer state ----------
+// ---------- timer state ----------
 let focusSeconds = Number(focusMinInput.value) * 60;
 let breakSeconds = Number(breakMinInput.value) * 60;
 
@@ -77,9 +70,7 @@ let timerId = null;
 
 let soundOn = true;
 
-// ---------- UI ----------
-todayEl.textContent = `Today: ${todayKey()}`;
-
+// ---------- helpers ----------
 function pad2(n) { return String(n).padStart(2, "0"); }
 function formatTime(sec) {
   const m = Math.floor(sec / 60);
@@ -98,19 +89,15 @@ function setModeUI() {
   appEl.classList.toggle("break-on", !isFocus);
 
   modeEl.textContent = isFocus ? "FOCUS" : "BREAK";
-  hintEl.textContent = isFocus
-    ? "No scrolling. One task. Right now."
-    : "Break time. Breathe. Small reward is okay.";
 
-  distractBtn.disabled = !isFocus || !isRunning;
-  distractBtn.style.opacity = (!isFocus || !isRunning) ? 0.45 : 1;
+  // sticker changes with mode
+  stickerEl.textContent = isFocus ? "🐶" : "🐑";
+
+  // important: distraction only enabled when running focus
+  distractBtn.disabled = !isRunning || !isFocus;
 }
 
-renderStats();
-setModeUI();
-renderTime();
-
-// ---------- Sound ----------
+// ---------- sound ----------
 function beep(freq = 880, duration = 140) {
   if (!soundOn) return;
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -132,13 +119,43 @@ soundBtn.addEventListener("click", () => {
   soundBtn.textContent = soundOn ? "🔊 Sound: ON" : "🔇 Sound: OFF";
 });
 
-// ---------- Timer logic ----------
+// ---------- always-show hints (SAVAGE but safe) ----------
+const savageHints = [
+  "Amazing. You opened the app again. Achievement unlocked: avoidance.",
+  "This scroll won’t finish your task. Shocking, I know.",
+  "Your deadline isn’t scared of your excuses. Start now.",
+  "You’re not “taking a break.” You’re donating time to the algorithm.",
+  "If scrolling solved problems, you’d be a genius by now.",
+  "Plot twist: the video will still be there after you do the work.",
+  "You pressed ‘distracted’ like it’s a hobby. Let’s return to the task.",
+  "You can be bored for 20 minutes. You’ll survive. Focus.",
+  "The algorithm loves you. Your future self does not.",
+  "Nice try. Now do one tiny step. Just one."
+];
+
+function setHint(text) {
+  hintEl.textContent = text;
+  // sticker reacts
+  stickerEl.textContent = "🐱";
+  // tiny reset after a moment
+  setTimeout(() => {
+    stickerEl.textContent = isFocus ? "🐶" : "🐑";
+  }, 900);
+}
+
+function showRandomSavageHint() {
+  const line = savageHints[Math.floor(Math.random() * savageHints.length)];
+  setHint(line);
+}
+
+// ---------- timer logic ----------
 function stopTimer() {
   isRunning = false;
   if (timerId) clearInterval(timerId);
   timerId = null;
   setModeUI();
 }
+
 function startTimer() {
   if (isRunning) return;
   isRunning = true;
@@ -155,8 +172,10 @@ function startTimer() {
         saveState(state);
         renderStats();
         beep(1040, 200);
+        setHint("✨ Pomodoro done! Tiny win. Keep going.");
       } else {
         beep(520, 180);
+        setHint("🌸 Break over. Back to focus—pick one task.");
       }
 
       isFocus = !isFocus;
@@ -169,122 +188,45 @@ function startTimer() {
 
 startBtn.addEventListener("click", startTimer);
 pauseBtn.addEventListener("click", () => { if (isRunning) stopTimer(); });
+
 resetBtn.addEventListener("click", () => {
   stopTimer();
   isFocus = true;
   remaining = focusSeconds;
   renderTime();
   setModeUI();
+  setHint("Pick one tiny task. Stay with it.");
 });
 
-// Apply settings
+// apply settings
 applyBtn.addEventListener("click", () => {
   const f = Math.max(1, Math.min(120, Number(focusMinInput.value || 25)));
   const b = Math.max(1, Math.min(60, Number(breakMinInput.value || 5)));
   focusMinInput.value = String(f);
   breakMinInput.value = String(b);
-
   focusSeconds = f * 60;
   breakSeconds = b * 60;
 
-  hintEl.textContent = isFocus
-    ? "Updated settings. Hit Reset to restart with new times."
-    : "Updated settings. Next break/focus will use the new times.";
+  setHint("Settings updated. Hit Reset to restart cleanly.");
 });
 
-// ---------- Gemini key handling ----------
-function loadGeminiKey() {
-  return (localStorage.getItem(KEY_STORAGE) || "").trim();
-}
-function saveGeminiKey(key) {
-  localStorage.setItem(KEY_STORAGE, key.trim());
-}
-geminiKeyInput.value = loadGeminiKey();
-
-saveKeyBtn.addEventListener("click", () => {
-  const key = geminiKeyInput.value.trim();
-  if (!key) {
-    localStorage.removeItem(KEY_STORAGE);
-    hintEl.textContent = "Gemini key cleared. Using local witty messages.";
+// distraction: GUARANTEED hint appears immediately
+distractBtn.addEventListener("click", () => {
+  // even if somehow clickable in wrong state, guard
+  if (!isRunning || !isFocus) {
+    setHint("Start Focus first, then log distractions. 🐑");
     return;
   }
-  saveGeminiKey(key);
-  hintEl.textContent = "Gemini key saved (local only).";
-});
-
-// ---------- Witty messages (fallback) ----------
-const fallbackLines = [
-  "Breaking: scrolling still isn’t your homework.",
-  "Bold strategy—avoiding the task by watching strangers exist.",
-  "Your deadline called. It’s not laughing with you.",
-  "Congrats, you opened the app… again. Do you feel accomplished?",
-  "This video won’t change your life. Finishing the task might.",
-  "You’re not “researching.” You’re procrastinating in HD."
-];
-
-// Keep it “lightly sarcastic”, not insulting
-async function getWittyLineWithGemini() {
-  const apiKey = loadGeminiKey();
-  if (!apiKey) return null;
-
-  const url =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
-    apiKey;
-
-  const prompt =
-  "Write ONE short, savage-but-safe roast aimed at the ACT of doomscrolling (not the person). " +
-  "Max 12 words. No profanity, no slurs, no insults about identity, intelligence, or appearance. " +
-  "No threats. Keep it sharp, witty, and motivational. " +
-  "Output ONLY the sentence, no quotes, no emojis.";
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.9 }
-    })
-  });
-
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!text) return null;
-
-  // Keep only first line / first sentence-ish
-  return text.split("\n")[0].slice(0, 120);
-}
-
-async function showWittyLine() {
-  let line = null;
-  try {
-    line = await getWittyLineWithGemini();
-  } catch {
-    line = null;
-  }
-  if (!line) {
-    line = fallbackLines[Math.floor(Math.random() * fallbackLines.length)];
-  }
-  hintEl.textContent = line;
-}
-
-// ---------- Distraction ----------
-distractBtn.addEventListener("click", () => {
-  if (!isRunning || !isFocus) return;
 
   state.distractions += 1;
   saveState(state);
   renderStats();
+
   beep(220, 120);
-
-  // ✅ 先立刻给一句，保证“点了就有反馈”
-  const fallback = fallbackLines[Math.floor(Math.random() * fallbackLines.length)];
-  hintEl.textContent = fallback;
-
-  // ✅ 再异步请求 Gemini，有结果就覆盖；失败就保持 fallback
-  showWittyLine().catch(() => {});
+  showRandomSavageHint();
 });
 
-// ---------- Tasks ----------
+// ---------- tasks ----------
 function uid() {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
@@ -302,17 +244,15 @@ function setFocusMinutesFromTask(minutes) {
   focusMinInput.value = String(m);
   focusSeconds = m * 60;
 
-  // If currently not running, update remaining immediately
   if (!isRunning) {
     isFocus = true;
     remaining = focusSeconds;
     renderTime();
     setModeUI();
+    setHint(`Focus set to ${m} min. Start when ready 🐶`);
+  } else {
+    setHint(`Focus set to ${m} min. Click Reset to apply cleanly 🐑`);
   }
-
-  hintEl.textContent = isRunning
-    ? `Focus set to ${m} min. Click Reset to apply cleanly.`
-    : `Focus set to ${m} min. Ready when you are.`;
 }
 
 function renderTasks() {
@@ -323,7 +263,7 @@ function renderTasks() {
     const li = document.createElement("li");
     li.style.padding = "8px";
     li.className = "muted";
-    li.textContent = "No tasks yet. Add one above.";
+    li.textContent = "No tasks yet. Add one above ✨";
     taskListEl.appendChild(li);
     calcTaskMins();
     return;
@@ -336,13 +276,11 @@ function renderTasks() {
     const row = document.createElement("div");
     row.className = "taskRow";
     row.title = "Click to set Focus minutes to this task";
-
-    // ✅ click row to set focus minutes (but not when clicking buttons)
     row.addEventListener("click", () => setFocusMinutesFromTask(t.minutes));
 
     const chk = document.createElement("button");
     chk.className = "taskChk";
-    chk.title = "Mark done / undone";
+    chk.title = "Done / Undone";
     chk.textContent = t.done ? "✅" : "⬜";
     chk.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -351,12 +289,15 @@ function renderTasks() {
 
     const text = document.createElement("div");
     text.className = "taskText";
+
     const name = document.createElement("div");
     name.className = "taskName";
     name.textContent = t.name;
+
     const meta = document.createElement("div");
     meta.className = "taskMeta";
     meta.textContent = `${t.minutes} min · click row to set focus`;
+
     text.appendChild(name);
     text.appendChild(meta);
 
@@ -385,7 +326,7 @@ function addTask() {
   const minutes = Math.max(1, Math.min(240, Number(taskMinInput.value || 25)));
 
   if (!name) {
-    hintEl.textContent = "Type a task name first.";
+    setHint("Type a task name first ✍️");
     taskNameInput.focus();
     return;
   }
@@ -398,29 +339,30 @@ function addTask() {
   taskMinInput.value = "25";
   renderTasks();
 
-  hintEl.textContent = "Task added. Click it to set Focus minutes.";
+  setHint("Task added. Click it to set Focus minutes ✨");
 }
 
 function toggleTask(id) {
-  const tasks = state.tasks || [];
-  const t = tasks.find(x => x.id === id);
+  const t = (state.tasks || []).find(x => x.id === id);
   if (!t) return;
   t.done = !t.done;
   saveState(state);
   renderTasks();
+  setHint(t.done ? "✅ Nice. Next tiny step?" : "Undone. Still counts as honesty.");
 }
 
 function deleteTask(id) {
   state.tasks = (state.tasks || []).filter(t => t.id !== id);
   saveState(state);
   renderTasks();
+  setHint("Deleted. Ruthless. I respect it.");
 }
 
 addTaskBtn.addEventListener("click", addTask);
 taskNameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") addTask(); });
 taskMinInput.addEventListener("keydown", (e) => { if (e.key === "Enter") addTask(); });
 
-// Space toggles start/pause (avoid when typing)
+// keyboard: space start/pause (avoid when typing)
 document.addEventListener("keydown", (e) => {
   if (e.key === " " && document.activeElement?.tagName !== "INPUT") {
     e.preventDefault();
@@ -428,6 +370,8 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Initial render
+// initial render
 renderStats();
+setModeUI();
+renderTime();
 renderTasks();
