@@ -214,11 +214,12 @@ saveKeyBtn.addEventListener("click", () => {
 
 // ---------- Witty messages (fallback) ----------
 const fallbackLines = [
-  "Ah yes, the sacred ritual of “just one scroll.”",
-  "Congratulations, you unlocked: distraction (again).",
-  "Your future self called. It sounded disappointed.",
-  "Plot twist: the video will still be there in 20 minutes.",
-  "Breaking news: scrolling has not solved your task."
+  "Breaking: scrolling still isn’t your homework.",
+  "Bold strategy—avoiding the task by watching strangers exist.",
+  "Your deadline called. It’s not laughing with you.",
+  "Congrats, you opened the app… again. Do you feel accomplished?",
+  "This video won’t change your life. Finishing the task might.",
+  "You’re not “researching.” You’re procrastinating in HD."
 ];
 
 // Keep it “lightly sarcastic”, not insulting
@@ -231,8 +232,10 @@ async function getWittyLineWithGemini() {
     apiKey;
 
   const prompt =
-    "Write ONE short, lightly sarcastic but friendly sentence (max 16 words) to discourage doomscrolling. " +
-    "No profanity, no harassment, no personal attacks. Keep it playful.";
+  "Write ONE short, savage-but-safe roast aimed at the ACT of doomscrolling (not the person). " +
+  "Max 12 words. No profanity, no slurs, no insults about identity, intelligence, or appearance. " +
+  "No threats. Keep it sharp, witty, and motivational. " +
+  "Output ONLY the sentence, no quotes, no emojis.";
 
   const response = await fetch(url, {
     method: "POST",
