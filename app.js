@@ -268,15 +268,20 @@ async function showWittyLine() {
 }
 
 // ---------- Distraction ----------
-distractBtn.addEventListener("click", async () => {
+distractBtn.addEventListener("click", () => {
   if (!isRunning || !isFocus) return;
 
   state.distractions += 1;
   saveState(state);
   renderStats();
-
   beep(220, 120);
-  await showWittyLine();
+
+  // ✅ 先立刻给一句，保证“点了就有反馈”
+  const fallback = fallbackLines[Math.floor(Math.random() * fallbackLines.length)];
+  hintEl.textContent = fallback;
+
+  // ✅ 再异步请求 Gemini，有结果就覆盖；失败就保持 fallback
+  showWittyLine().catch(() => {});
 });
 
 // ---------- Tasks ----------
